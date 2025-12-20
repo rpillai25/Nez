@@ -184,16 +184,18 @@ namespace Nez.Tiled
 				var pval = string.Empty;
 				if (isClass)
 				{
-					// Loop through sub elements and pull name/value for dict
-					foreach (var subP in p.Elements("properties").DescendantNodes())
+					// Loop through all descendant properties
+					foreach (var descendantProperty in p.Descendants())
 					{
-						if (subP is XElement element)
+						// If the property has no attributes or is a class skip it
+						if (!descendantProperty.HasAttributes || descendantProperty.Attribute("type")?.Value == "class")
 						{
-							pname = element.Attribute("name")?.Value;
-							pval = element.Attribute("value")?.Value ?? element.Value;
-
-							dict.Add(pname, pval);
+							continue;
 						}
+
+						pname = descendantProperty.Attribute("name")?.Value;
+						pval = descendantProperty.Attribute("value")?.Value;
+						dict.Add(pname, pval);
 					}
 				}
 				else
@@ -506,7 +508,7 @@ namespace Nez.Tiled
 			obj.Y = (float)xObject.Attribute("y");
 			obj.Width = (float?)xObject.Attribute("width") ?? (float?)obj.Width ?? 0.0f;
 			obj.Height = (float?)xObject.Attribute("height") ?? (float?)obj.Height ?? 0.0f;
-			obj.Type = (string)xObject.Attribute("type") ?? (string)xObject.Attribute("class") ?? string.Empty;
+			obj.Type = (string)xObject.Attribute("type") ?? (string)xObject.Attribute("class") ?? (string)obj.Type ?? string.Empty;
 			obj.Visible = (bool?)xObject.Attribute("visible") ?? true;
 			obj.Rotation = (float?)xObject.Attribute("rotation") ?? (float?)obj.Rotation ?? 0.0f;
 
