@@ -171,7 +171,8 @@ namespace Nez.AI.GOAP
 			for (var i = 0; i < _viableActions.Count; ++i)
 			{
 				// see if precondition is met
-				var pre = _preConditions[i];
+				var actionIndex = FindActionIndex(_viableActions[i]);
+				var pre = _preConditions[actionIndex];
 				var care = (pre.DontCare ^ -1L);
 				bool met = ((pre.Values & care) == (fr.Values & care));
 				if (met)
@@ -179,7 +180,7 @@ namespace Nez.AI.GOAP
 					var node = Pool<AStarNode>.Obtain();
 					node.Action = _viableActions[i];
 					node.CostSoFar = _viableActions[i].Cost;
-					node.WorldState = ApplyPostConditions(this, i, fr);
+					node.WorldState = ApplyPostConditions(this, actionIndex, fr);
 					result.Add(node);
 				}
 			}
