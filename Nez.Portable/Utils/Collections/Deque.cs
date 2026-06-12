@@ -696,9 +696,11 @@ namespace System.Collections.Generic
 				{
 					// Move items up:
 					// [index, Count) -> [index + count, count + Count)
+					// Copy descending: the destination overlaps the source, so an ascending
+					// copy would overwrite source items before they are read.
 					int copyCount = Count - index;
 					int shiftIndex = index + count;
-					for (int j = 0; j < copyCount; j++)
+					for (int j = copyCount - 1; j >= 0; j--)
 					{
 						buffer[ToBufferIndex(shiftIndex + j)] =
 							buffer[ToBufferIndex(index + j)];
@@ -764,9 +766,11 @@ namespace System.Collections.Generic
 
 				// Move items up:
 				//  [0, index) -> [count, count + index)
+				// Copy descending: the destination overlaps the source, so an ascending
+				// copy would overwrite source items before they are read.
 				int copyCount = index;
 				int writeIndex = count;
-				for (int j = 0; j < copyCount; j++)
+				for (int j = copyCount - 1; j >= 0; j--)
 				{
 					buffer[ToBufferIndex(writeIndex + j)]
 						= buffer[ToBufferIndex(j)];
