@@ -17,6 +17,15 @@ namespace Nez
 
 		public static bool PushScissors(Rectangle scissor)
 		{
+			// clamp to the viewport. A scissor that doesn't overlap the viewport can't draw anything
+			// visible (e.g. a clipped panel hidden by sliding it off-screen), and FNA3D warns
+			// "Scissor rect and viewport appear not to overlap" on every draw with such a rect.
+			// Rejecting it here makes callers skip their clipped content entirely.
+			var viewportBounds = Core.GraphicsDevice.Viewport.Bounds;
+			Rectangle.Intersect(ref scissor, ref viewportBounds, out scissor);
+			if (scissor.Width < 1 || scissor.Height < 1)
+				return false;
+
 			if (_scissors.Count > 0)
 			{
 				// merge scissors

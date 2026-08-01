@@ -476,8 +476,11 @@ namespace Nez.UI
 				return false;
 
 			var tableBounds = RectangleExt.FromFloats(x, y, width, height);
+			// use the camera the Stage is actually rendered with (set in Stage.Render), matching ScrollPane and
+			// SplitPane. The scene camera is the wrong space for screen-space stages: its pan/zoom would shift
+			// UI scissor rects off the viewport (FNA3D "Scissor rect and viewport appear not to overlap" spam)
 			var scissorBounds =
-				ScissorStack.CalculateScissors(_stage?.Entity?.Scene?.Camera, batcher.TransformMatrix, tableBounds);
+				ScissorStack.CalculateScissors(_stage?.Camera, batcher.TransformMatrix, tableBounds);
 			if (ScissorStack.PushScissors(scissorBounds))
 			{
 				batcher.EnableScissorTest(true);
