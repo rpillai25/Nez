@@ -21,6 +21,14 @@ namespace Nez
 		[DebuggerHidden]
 		static void Log(LogType type, string format, params object[] args)
 		{
+			// With no args the message is not a format string — write it verbatim so literal
+			// braces (e.g. Point.ToString() => "{X:0 Y:3}") cannot throw FormatException
+			if (args == null || args.Length == 0)
+			{
+				System.Diagnostics.Debug.WriteLine(type.ToString() + ": " + format);
+				return;
+			}
+
 			switch (type)
 			{
 				case LogType.Error:
