@@ -9,6 +9,22 @@ namespace Nez.UI
 		public event Action<bool> OnChanged;
 		public event Action<Button> OnClicked, OnRightClicked;
 
+		/// <summary>
+		/// optional global hook invoked whenever any enabled Button is clicked via mouse or gamepad, before OnClicked.
+		/// Games can use this for centralized click sounds.
+		/// </summary>
+		public static Action<Button> OnGlobalClicked;
+
+		/// <summary>
+		/// game-defined category consumed by OnGlobalClicked handlers (e.g. to select a click sound). 0 is the default.
+		/// </summary>
+		public int ClickSoundCategory;
+
+		/// <summary>
+		/// when true, this Button never invokes OnGlobalClicked
+		/// </summary>
+		public bool SuppressGlobalClick;
+
 		public override float PreferredWidth
 		{
 			get
@@ -141,6 +157,9 @@ namespace Nez.UI
 
 			SetChecked(!_isChecked, true);
 
+			if (!SuppressGlobalClick && OnGlobalClicked != null)
+				OnGlobalClicked(this);
+
 			if (OnClicked != null)
 				OnClicked(this);
 		}
@@ -245,6 +264,9 @@ namespace Nez.UI
 			_mouseDown = false;
 
 			SetChecked(!_isChecked, true);
+
+			if (!SuppressGlobalClick && OnGlobalClicked != null)
+				OnGlobalClicked(this);
 
 			if (OnClicked != null)
 				OnClicked(this);

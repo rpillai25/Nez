@@ -138,6 +138,12 @@ namespace Nez.UI
 
 		public Action OnClick;
 
+		/// <summary>
+		/// optional global hook invoked whenever any TabButton is clicked, before OnClick.
+		/// Games can use this for centralized click sounds.
+		/// </summary>
+		public static Action<TabButton> OnGlobalClicked;
+
 		public TabButton(Tab tab, TabButtonStyle style)
 		{
 			this.style = style;
@@ -265,6 +271,7 @@ namespace Nez.UI
 
 		void IInputListener.OnLeftMouseUp(Vector2 mousePos)
 		{
+			OnGlobalClicked?.Invoke(this);
 			OnClick?.Invoke();
 		}
 
