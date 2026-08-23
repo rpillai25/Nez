@@ -156,7 +156,9 @@ namespace Nez.UI
 		{
 			SetTouchable(Touchable.Enabled);
 			text = new Label(tabName, style.LabelStyle);
-			Add(text).SetFillX().Pad(8);
+			// Horizontal padding is fixed (it sets the tab's width); vertical padding is styleable
+			// so a game can make its tab strip shorter without narrowing the buttons.
+			Add(text).SetFillX().Pad(style.PaddingVertical, 8, style.PaddingVertical, 8);
 			SetBackground(style.Inactive);
 			PadTop(style.PaddingTop);
 		}
@@ -292,6 +294,12 @@ namespace Nez.UI
 		public IDrawable Locked;
 		public IDrawable Hover;
 		public float PaddingTop = 0.0F;
+
+		/// <summary>
+		/// Padding above and below the tab label, which is what drives the tab strip's height.
+		/// Defaults to 8 on each side.
+		/// </summary>
+		public float PaddingVertical = 8.0F;
 		public LabelStyle LabelStyle;
 	}
 }
