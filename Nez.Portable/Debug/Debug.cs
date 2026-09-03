@@ -18,9 +18,19 @@ namespace Nez
 
 		#region Logging
 
+		/// <summary>
+		/// when true, Log/Info/Trace messages are dropped and only Warn/Error reach the output. Games
+		/// that run the simulation far faster than real time (replay seeking) set this to keep
+		/// Debug.WriteLine (expensive under an attached debugger) off the hot path.
+		/// </summary>
+		public static bool QuietMode = false;
+
 		[DebuggerHidden]
 		static void Log(LogType type, string format, params object[] args)
 		{
+			if (QuietMode && type != LogType.Error && type != LogType.Warn)
+				return;
+
 			// With no args the message is not a format string — write it verbatim so literal
 			// braces (e.g. Point.ToString() => "{X:0 Y:3}") cannot throw FormatException
 			if (args == null || args.Length == 0)
