@@ -208,6 +208,7 @@ namespace Nez
 		internal readonly FastList<Renderer> _renderers = new FastList<Renderer>();
 		internal readonly FastList<Renderer> _afterPostProcessorRenderers = new FastList<Renderer>();
 		internal readonly FastList<PostProcessor> _postProcessors = new FastList<PostProcessor>();
+		internal readonly FastList<UICanvas> _presentationCanvases = new FastList<UICanvas>();
 		bool _didSceneBegin;
 
 
@@ -403,6 +404,36 @@ namespace Nez
 
 			// we update our renderables after entity.update in case any new Renderables were added
 			RenderableComponents.UpdateLists();
+		}
+
+		/// <summary>
+		/// called once per rendered frame (after all fixed simulation steps) when <see cref="Core.UseFixedTimeStep"/>
+		/// is enabled. The base implementation updates every UICanvas Stage so UI input and animations run with the
+		/// real frame delta even on frames that ran zero simulation steps. Override to add camera/HUD work that
+		/// must never influence the simulation.
+		/// </summary>
+		public virtual void PresentationUpdate()
+		{
+			// match Update: the Viewport must correspond to the scene RenderTarget for mouse scaling
+			Core.GraphicsDevice.SetRenderTarget(_sceneRenderTarget);
+
+			for (var i = 0; i < _presentationCanvases.Length; i++)
+			{
+				var canvas = _presentationCanvases.Buffer[i];
+				if (canvas.Enabled)
+					canvas.Stage.Update();
+			}
+		}
+
+		internal void RegisterPresentationCanvas(UICanvas canvas)
+		{
+			if (!_presentationCanvases.Contains(canvas))
+				_presentationCanvases.Add(canvas);
+		}
+
+		internal void UnregisterPresentationCanvas(UICanvas canvas)
+		{
+			_presentationCanvases.Remove(canvas);
 		}
 
 		internal void Render()

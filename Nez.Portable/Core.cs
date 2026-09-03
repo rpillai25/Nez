@@ -41,6 +41,62 @@ namespace Nez
 		public static bool DebugRenderEnabled = false;
 
 		/// <summary>
+		/// when true the simulation (global managers + Scene.Update) advances only in whole steps of
+		/// <see cref="FixedStepSeconds"/>, driven by a wall-clock accumulator, and UI/presentation code runs once per
+		/// rendered frame via <see cref="Scene.PresentationUpdate"/>. Off by default so existing games are unaffected.
+		/// </summary>
+		public static bool UseFixedTimeStep = false;
+
+		/// <summary>
+		/// length of one simulation step when <see cref="UseFixedTimeStep"/> is enabled
+		/// </summary>
+		public static float FixedStepSeconds = 1f / 60f;
+
+		/// <summary>
+		/// multiplier applied to wall-clock time before it is converted into simulation steps. 2 runs the simulation
+		/// twice as fast without changing the per-step delta (unlike Time.TimeScale). Fixed-step mode only.
+		/// </summary>
+		public static float SimulationSpeed = 1f;
+
+		/// <summary>
+		/// upper bound on accumulator-driven steps per rendered frame. Protects against catch-up spirals after a hitch
+		/// or while the window is occluded; the backlog is dropped instead. Fixed-step mode only.
+		/// </summary>
+		public static int MaxStepsPerFrame = 6;
+
+		/// <summary>
+		/// when true the accumulator produces no steps (the simulation freezes) while the presentation pass keeps
+		/// running so UI and camera stay responsive. <see cref="PendingExtraSteps"/> still runs. Fixed-step mode only.
+		/// </summary>
+		public static bool SimulationSuspended = false;
+
+		/// <summary>
+		/// extra simulation steps requested on top of the accumulator (e.g. a replay seek). They are consumed in
+		/// per-frame bursts bounded by <see cref="ExtraStepWallBudgetSeconds"/> so rendering never starves. At least one
+		/// pending step runs per frame. Fixed-step mode only.
+		/// </summary>
+		public static long PendingExtraSteps = 0;
+
+		/// <summary>
+		/// wall-clock budget per frame for servicing <see cref="PendingExtraSteps"/>
+		/// </summary>
+		public static float ExtraStepWallBudgetSeconds = 0.030f;
+
+		/// <summary>
+		/// total simulation steps run by this process (fixed-step mode only)
+		/// </summary>
+		public static long SimulationStepCount = 0;
+
+		/// <summary>
+		/// true while a simulation step is executing, false during the presentation pass. Lets game code assert that
+		/// input polling never happens inside the simulation.
+		/// </summary>
+		public static bool IsInSimulationStep = false;
+
+		float _fixedStepAccumulator;
+		readonly Stopwatch _extraStepStopwatch = new Stopwatch();
+
+		/// <summary>
 		/// global access to the graphicsDevice
 		/// </summary>
 		public new static GraphicsDevice GraphicsDevice;
@@ -229,45 +285,75 @@ namespace Nez
 				return;
 			}
 
-			// update all our systems and global managers
-			Time.Update((float)gameTime.ElapsedGameTime.TotalSeconds);
-			Input.Update();
+			var wallDt = (float)gameTime.ElapsedGameTime.TotalSeconds;
 
-			if (ExitOnEscapeKeypress &&
-				(Input.IsKeyDown(Keys.Escape) || Input.GamePads[0].IsButtonReleased(Buttons.Back)))
+			if (!UseFixedTimeStep)
 			{
-				base.Exit();
-				return;
+				// legacy variable-step path: one simulation update per rendered frame with the real frame delta
+				Time.Update(wallDt);
+				Input.Update();
+
+				if (ExitOnEscapeKeypress &&
+					(Input.IsKeyDown(Keys.Escape) || Input.GamePads[0].IsButtonReleased(Buttons.Back)))
+				{
+					base.Exit();
+					return;
+				}
+
+				if (_scene != null)
+				{
+					UpdateGlobalManagers();
+					UpdateSceneIfAllowed();
+					HandleSceneSwap();
+				}
 			}
-
-			if (_scene != null)
+			else
 			{
-				for (var i = _globalManagers.Length - 1; i >= 0; i--)
+				// fixed-step path: input is polled exactly once per rendered frame so edge-triggered input
+				// (pressed/released) fires once no matter how many simulation steps run this frame
+				Input.Update();
+
+				if (ExitOnEscapeKeypress &&
+					(Input.IsKeyDown(Keys.Escape) || Input.GamePads[0].IsButtonReleased(Buttons.Back)))
 				{
-					if (_globalManagers.Buffer[i].Enabled)
-						_globalManagers.Buffer[i].Update();
+					base.Exit();
+					return;
 				}
 
-				// read carefully:
-				// - we do not update the Scene while a SceneTransition is happening
-				// 		- unless it is SceneTransition that doesn't change Scenes (no reason not to update)
-				//		- or it is a SceneTransition that has already switched to the new Scene (the new Scene needs to do its thing)
-				if (_sceneTransition == null ||
-					(_sceneTransition != null &&
-					 (!_sceneTransition._loadsNewScene || _sceneTransition._isNewSceneLoaded)))
+				if (wallDt > Time.MaxDeltaTime)
+					wallDt = Time.MaxDeltaTime;
+
+				var speed = SimulationSuspended ? 0f : SimulationSpeed;
+				var steps = FixedStepScheduler.ComputeSteps(ref _fixedStepAccumulator, wallDt, speed, FixedStepSeconds, MaxStepsPerFrame);
+
+				if (_scene != null)
 				{
-					_scene.Update();
+					for (var i = 0; i < steps; i++)
+						RunSimulationStep();
+
+					if (PendingExtraSteps > 0)
+					{
+						// always make progress: at least one extra step per frame, then as many as the wall budget allows
+						_extraStepStopwatch.Restart();
+						do
+						{
+							PendingExtraSteps--;
+							RunSimulationStep();
+						} while (PendingExtraSteps > 0 && _extraStepStopwatch.Elapsed.TotalSeconds < ExtraStepWallBudgetSeconds);
+					}
+
+					// presentation pass: UI, camera and other per-frame code see the real frame delta
+					IsInSimulationStep = false;
+					Time.PresentationUpdate(wallDt);
+					if (IsSceneUpdateAllowed())
+						_scene.PresentationUpdate();
+
+					// a UI interaction may have requested a new Scene
+					HandleSceneSwap();
 				}
-
-				if (_nextScene != null)
+				else
 				{
-					_scene.End();
-
-					_scene = _nextScene;
-					_nextScene = null;
-					OnSceneChanged();
-
-					_scene.Begin();
+					Time.PresentationUpdate(wallDt);
 				}
 			}
 
@@ -278,6 +364,62 @@ namespace Nez
 			// Update called though so we do so here.
 			FrameworkDispatcher.Update();
 #endif
+		}
+
+		/// <summary>
+		/// runs one fixed simulation step: clock, global managers (coroutines, tweens, timers), Scene.Update and any
+		/// pending Scene swap so the next step already ticks the new Scene
+		/// </summary>
+		void RunSimulationStep()
+		{
+			IsInSimulationStep = true;
+			Time.SimulationStepUpdate(FixedStepSeconds);
+			UpdateGlobalManagers();
+			UpdateSceneIfAllowed();
+			HandleSceneSwap();
+			SimulationStepCount++;
+		}
+
+		void UpdateGlobalManagers()
+		{
+			for (var i = _globalManagers.Length - 1; i >= 0; i--)
+			{
+				if (_globalManagers.Buffer[i].Enabled)
+					_globalManagers.Buffer[i].Update();
+			}
+		}
+
+		/// <summary>
+		/// read carefully:
+		/// - we do not update the Scene while a SceneTransition is happening
+		/// 	- unless it is SceneTransition that doesn't change Scenes (no reason not to update)
+		///		- or it is a SceneTransition that has already switched to the new Scene (the new Scene needs to do its thing)
+		/// </summary>
+		bool IsSceneUpdateAllowed()
+		{
+			return _sceneTransition == null ||
+				   (_sceneTransition != null &&
+					(!_sceneTransition._loadsNewScene || _sceneTransition._isNewSceneLoaded));
+		}
+
+		void UpdateSceneIfAllowed()
+		{
+			if (IsSceneUpdateAllowed())
+				_scene.Update();
+		}
+
+		void HandleSceneSwap()
+		{
+			if (_nextScene == null)
+				return;
+
+			_scene.End();
+
+			_scene = _nextScene;
+			_nextScene = null;
+			OnSceneChanged();
+
+			_scene.Begin();
 		}
 
 		protected override void Draw(GameTime gameTime)

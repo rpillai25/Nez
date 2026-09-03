@@ -35,6 +35,7 @@ namespace Nez
 		public override void OnAddedToEntity()
 		{
 			Stage.Entity = Entity;
+			Entity.Scene?.RegisterPresentationCanvas(this);
 
 			foreach (var child in Stage.GetRoot().children)
 			{
@@ -46,14 +47,20 @@ namespace Nez
 
 		public override void OnRemovedFromEntity()
 		{
+			Entity.Scene?.UnregisterPresentationCanvas(this);
 			Stage.Entity = null;
 			Stage.Dispose();
 		}
 
 
+		/// <summary>
+		/// in fixed-step mode the Stage is updated from <see cref="Scene.PresentationUpdate"/> once per rendered frame
+		/// instead of once per simulation step, so UI input never lands inside the simulation and click edges fire once
+		/// </summary>
 		public virtual void Update()
 		{
-			Stage.Update();
+			if (!Core.UseFixedTimeStep)
+				Stage.Update();
 		}
 
 
