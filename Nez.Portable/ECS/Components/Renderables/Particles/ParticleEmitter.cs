@@ -118,6 +118,10 @@ namespace Nez.Particles
 			if (_isPaused)
 				return;
 
+			// purely visual: a game fast-forwarding through unseen steps may suspend particle simulation
+			if (Core.CosmeticUpdatesSuspended)
+				return;
+
 			// prep data for the particle.update method
 			var rootPosition = Entity.Transform.Position + _localOffset;
 

@@ -93,6 +93,13 @@ namespace Nez
 		/// </summary>
 		public static bool IsInSimulationStep = false;
 
+		/// <summary>
+		/// when true, purely visual per-step work (particle simulation, floating text, sort-depth updates) may be skipped
+		/// by components that check it. Games set this while fast-forwarding through steps nobody will see (a replay
+		/// seek) so each step costs less; nothing that influences the simulation may honor this flag.
+		/// </summary>
+		public static bool CosmeticUpdatesSuspended = false;
+
 		float _fixedStepAccumulator;
 		readonly Stopwatch _extraStepStopwatch = new Stopwatch();
 
