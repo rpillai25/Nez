@@ -118,9 +118,19 @@ namespace Nez.Particles
 			if (_isPaused)
 				return;
 
-			// purely visual: a game fast-forwarding through unseen steps may suspend particle simulation
+			// purely visual: a game fast-forwarding through unseen steps may suspend particle simulation.
+			// Finish instantly rather than freeze, or the effect would play once the fast-forward ends.
 			if (Core.CosmeticUpdatesSuspended)
+			{
+				if (_active)
+				{
+					_emitting = false;
+					Stop();
+					if (OnAllParticlesExpired != null)
+						OnAllParticlesExpired(this);
+				}
 				return;
+			}
 
 			// prep data for the particle.update method
 			var rootPosition = Entity.Transform.Position + _localOffset;
