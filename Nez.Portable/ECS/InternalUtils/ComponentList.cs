@@ -175,7 +175,10 @@ namespace Nez
 
 			if (_isComponentListUnsorted)
 			{
-				_updatableComponents.Sort(compareUpdatableOrder);
+				// Stable on purpose: components with the same UpdateOrder must keep their insertion
+				// order no matter which other components were added or removed in between, or an
+				// entity's update order (and so the simulation) would depend on cosmetic history
+				_updatableComponents.StableSort(compareUpdatableOrder);
 				_isComponentListUnsorted = false;
 			}
 		}

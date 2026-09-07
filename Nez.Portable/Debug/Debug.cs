@@ -87,6 +87,19 @@ namespace Nez
 				Log(LogType.Warn, format, args);
 		}
 
+		/// <summary>
+		/// Interpolated-string overload: <c>Debug.Log($"...")</c> binds here, and under
+		/// <see cref="QuietMode"/> the interpolation itself is skipped (see <see cref="QuietLogHandler"/>).
+		/// </summary>
+		[Conditional("DEBUG")]
+		[DebuggerHidden]
+		public static void Log(QuietLogHandler message)
+		{
+			if (QuietMode)
+				return;
+			Log(LogType.Log, message.GetFormattedText());
+		}
+
 		[Conditional("DEBUG")]
 		[DebuggerHidden]
 		public static void Log(object obj)

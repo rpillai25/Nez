@@ -182,5 +182,27 @@ namespace Nez
 		{
 			Array.Sort(Buffer, 0, Length, comparer);
 		}
+
+
+		/// <summary>
+		/// Stable sort: elements that compare equal keep their current relative order. Array.Sort is an
+		/// introsort and may reorder equal elements depending on what else is in the list, which makes
+		/// the resulting order depend on history. Insertion sort is used because these lists are small
+		/// and usually nearly sorted already.
+		/// </summary>
+		public void StableSort(IComparer<T> comparer)
+		{
+			for (var i = 1; i < Length; i++)
+			{
+				var item = Buffer[i];
+				var j = i - 1;
+				while (j >= 0 && comparer.Compare(Buffer[j], item) > 0)
+				{
+					Buffer[j + 1] = Buffer[j];
+					j--;
+				}
+				Buffer[j + 1] = item;
+			}
+		}
 	}
 }
