@@ -53,11 +53,18 @@ namespace Nez.Persistence.Binary
 		public void Save(string filename, IPersistable persistable)
 		{
 			var tmpFile = GetTmpFile(filename);
+
+			// An orphaned tmp file (crash mid-save) must not keep stale tail bytes: the binary writer
+			// opens with File.OpenWrite, which does not truncate.
+			if (File.Exists(tmpFile))
+				File.Delete(tmpFile);
+
 			using (var writer = GetDataWriter(tmpFile))
 				writer.Write(persistable);
 
-			File.Copy(tmpFile, Path.Combine(_persistentDataPath, filename), true);
-			File.Delete(tmpFile);
+			// Atomic rename on the same volume: the destination is either the old file or the
+			// complete new one, never a truncated copy.
+			File.Move(tmpFile, Path.Combine(_persistentDataPath, filename), true);
 		}
 
 		public void Load(string filename, IPersistable persistable)
