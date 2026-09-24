@@ -109,6 +109,12 @@ namespace Nez
 
 		public bool DebugRenderEnabled = true;
 
+		/// <summary>
+		/// Scratch slot for an external per-renderable cache (PitHero's replay frame recorder keeps its
+		/// entity id here so a capture walk needs no hashing). 0 = none. Nothing in Nez reads it.
+		/// </summary>
+		public ushort CaptureSlot;
+
 		protected Vector2 _localOffset;
 		protected float _layerDepth;
 		protected int _renderLayer;
