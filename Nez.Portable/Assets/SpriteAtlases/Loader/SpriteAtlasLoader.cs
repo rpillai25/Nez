@@ -15,8 +15,13 @@ namespace Nez.Sprites
 		public static SpriteAtlas ParseSpriteAtlas(string dataFile, bool premultiplyAlpha = false)
 		{
 			var spriteAtlas = ParseSpriteAtlasData(dataFile);
-			using (var stream = TitleContainer.OpenStream(dataFile.Replace(".atlas", ".png")))
-				return spriteAtlas.AsSpriteAtlas(premultiplyAlpha ? TextureUtils.TextureFromStreamPreMultiplied(stream) : Texture2D.FromStream(Core.GraphicsDevice, stream));
+			var imageFile = dataFile.Replace(".atlas", ".png");
+			using (var stream = TitleContainer.OpenStream(imageFile))
+			{
+				var texture = premultiplyAlpha ? TextureUtils.TextureFromStreamPreMultiplied(stream) : Texture2D.FromStream(Core.GraphicsDevice, stream);
+				texture.Name = imageFile; // stable, path-based identity (the replay frame recorder keys sprites on it)
+				return spriteAtlas.AsSpriteAtlas(texture);
+			}
 		}
 
 		/// <summary>
