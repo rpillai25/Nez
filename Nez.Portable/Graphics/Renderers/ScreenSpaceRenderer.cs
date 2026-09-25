@@ -23,13 +23,14 @@ namespace Nez
 		{
 			BeginRender(Camera);
 
+			var filter = scene.RenderableFilter;
 			for (var i = 0; i < RenderLayers.Length; i++)
 			{
 				var renderables = scene.RenderableComponents.ComponentsWithRenderLayer(RenderLayers[i]);
 				for (var j = 0; j < renderables.Length; j++)
 				{
 					var renderable = renderables.Buffer[j];
-					if (renderable.Enabled && renderable.IsVisibleFromCamera(Camera))
+					if (renderable.Enabled && (filter == null || filter(renderable)) && renderable.IsVisibleFromCamera(Camera))
 						RenderAfterStateCheck(renderable, Camera);
 				}
 			}

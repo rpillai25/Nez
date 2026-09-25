@@ -123,6 +123,13 @@ namespace Nez
 		public readonly RenderableComponentList RenderableComponents;
 
 		/// <summary>
+		/// optional per-scene draw filter consulted by the stock Renderers (DefaultRenderer, RenderLayerRenderer,
+		/// RenderLayerExcludeRenderer, ScreenSpaceRenderer) before a renderable is drawn: null draws everything,
+		/// otherwise only renderables it returns true for are drawn. Presentation-only; no Enabled flag is touched.
+		/// </summary>
+		public Func<IRenderable, bool> RenderableFilter;
+
+		/// <summary>
 		/// gets the size of the sceneRenderTarget
 		/// </summary>
 		/// <value>The size of the scene render texture.</value>

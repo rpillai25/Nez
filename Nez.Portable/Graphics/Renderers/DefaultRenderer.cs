@@ -16,10 +16,11 @@
 			var cam = Camera ?? scene.Camera;
 			BeginRender(cam);
 
+			var filter = scene.RenderableFilter;
 			for (var i = 0; i < scene.RenderableComponents.Count; i++)
 			{
 				var renderable = scene.RenderableComponents[i];
-				if (renderable.Enabled && renderable.IsVisibleFromCamera(cam))
+				if (renderable.Enabled && (filter == null || filter(renderable)) && renderable.IsVisibleFromCamera(cam))
 					RenderAfterStateCheck(renderable, cam);
 			}
 
