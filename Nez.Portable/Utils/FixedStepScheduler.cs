@@ -36,5 +36,19 @@ namespace Nez
 
 			return steps;
 		}
+
+		/// <summary>
+		/// How long the main thread should rest after a burst of extra steps that kept it busy for
+		/// <paramref name="busySeconds"/>, so that busy / (busy + rest) equals <paramref name="dutyCycle"/>. A duty
+		/// cycle of 1 (or more) never rests; 0 or less is treated as "no throttle" too, because it would mean an
+		/// infinite rest. Used by <see cref="Core"/> to keep a long replay seek from pegging one core.
+		/// </summary>
+		public static float ComputeRestSeconds(float busySeconds, float dutyCycle)
+		{
+			if (busySeconds <= 0f || dutyCycle <= 0f || dutyCycle >= 1f)
+				return 0f;
+
+			return busySeconds * (1f - dutyCycle) / dutyCycle;
+		}
 	}
 }

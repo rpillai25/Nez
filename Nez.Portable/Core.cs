@@ -83,6 +83,14 @@ namespace Nez
 		public static float ExtraStepWallBudgetSeconds = 0.030f;
 
 		/// <summary>
+		/// share of the main thread a burst of <see cref="PendingExtraSteps"/> may use, in (0, 1]. Below 1 the thread
+		/// sleeps after each burst that leaves steps pending, for busy * (1 - duty) / duty (see
+		/// <see cref="FixedStepScheduler.ComputeRestSeconds"/>), so a long seek runs at that fraction of one core
+		/// instead of pegging it. 1 (the default) never rests. Fixed-step mode only.
+		/// </summary>
+		public static float ExtraStepDutyCycle = 1f;
+
+		/// <summary>
 		/// total simulation steps run by this process (fixed-step mode only)
 		/// </summary>
 		public static long SimulationStepCount = 0;
@@ -347,6 +355,16 @@ namespace Nez
 							PendingExtraSteps--;
 							RunSimulationStep();
 						} while (PendingExtraSteps > 0 && _extraStepStopwatch.Elapsed.TotalSeconds < ExtraStepWallBudgetSeconds);
+
+						// throttle: with more steps still pending, give the core a rest proportional to the burst so
+						// the seek holds its duty cycle (the frame just takes longer; the last burst never rests)
+						if (PendingExtraSteps > 0 && ExtraStepDutyCycle < 1f)
+						{
+							var rest = FixedStepScheduler.ComputeRestSeconds((float)_extraStepStopwatch.Elapsed.TotalSeconds, ExtraStepDutyCycle);
+							var restMs = (int)(rest * 1000f + 0.5f);
+							if (restMs > 0)
+								System.Threading.Thread.Sleep(restMs);
+						}
 					}
 
 					// presentation pass: UI, camera and other per-frame code see the real frame delta
