@@ -83,6 +83,10 @@ namespace Nez
 		/// if true, the older FNA half-pixel offset will be used when creating the ortho matrix. Autoset to true for FNA.
 		public static bool UseFnaHalfPixelMatrix = false;
 
+		/// if true, the ortho matrix shifts everything by half a pixel (D3D9 style). Set to false for a 1:1 mapping like FNA's SpriteBatch,
+		/// otherwise pixel centers land on texel edges and point sampling can pick up neighboring texels.
+		public static bool UseHalfPixelOffset = true;
+
 		const int MAX_SPRITES = 2048;
 		const int MAX_VERTICES = MAX_SPRITES * 4;
 		const int MAX_INDICES = MAX_SPRITES * 6;
@@ -1079,8 +1083,16 @@ namespace Nez
 				_projectionMatrix.M22 = (float)(-2.0 / (double)viewport.Height);
 			}
 
-			_projectionMatrix.M41 = -1 - 0.5f * _projectionMatrix.M11;
-			_projectionMatrix.M42 = 1 - 0.5f * _projectionMatrix.M22;
+			if (UseHalfPixelOffset)
+			{
+				_projectionMatrix.M41 = -1 - 0.5f * _projectionMatrix.M11;
+				_projectionMatrix.M42 = 1 - 0.5f * _projectionMatrix.M22;
+			}
+			else
+			{
+				_projectionMatrix.M41 = -1;
+				_projectionMatrix.M42 = 1;
+			}
 
 			Matrix.Multiply(ref _transformMatrix, ref _projectionMatrix, out _matrixTransformMatrix);
 			_spriteEffect.SetMatrixTransform(ref _matrixTransformMatrix);
