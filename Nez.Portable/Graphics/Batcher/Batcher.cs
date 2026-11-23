@@ -63,6 +63,12 @@ namespace Nez
 		// How many sprites are in the current batch?
 		int _numSprites;
 
+		/// <summary>
+		/// Running count of draw calls issued by every Batcher since startup. Read it twice and subtract
+		/// to measure a frame; it is never reset.
+		/// </summary>
+		public static int DrawCallCount;
+
 		// Matrix to be used when creating the projection matrix
 		Matrix _transformMatrix;
 
@@ -1091,6 +1097,7 @@ namespace Nez
 
 		void DrawPrimitives(Texture texture, int baseSprite, int batchSize)
 		{
+			DrawCallCount++;
 			if (_customEffect != null)
 			{
 				foreach (var pass in _customEffect.CurrentTechnique.Passes)
